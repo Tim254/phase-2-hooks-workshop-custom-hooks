@@ -1,30 +1,77 @@
-import { renderHook } from "@testing-library/react-hooks/pure";
-import { server } from "../data/mocks/server";
-import { usePokemon } from "../exercise/02";
-// import { usePokemon } from "../solution/02";
+import styled from "styled-components";
+import React, { useEffect, useState } from "react";
 
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+export function usePokemon(query) {
+  const [pokemon, setPokemon] = useState(null);
 
-describe("Exercise 02", () => {
-  test("returns an initial state of null", () => {
-    const { result } = renderHook(() => usePokemon("charmander"));
-    expect(result.current).toMatchObject({ data: null });
-  });
+  useEffect(() => {
+    fetch(`https://pokeapi.co/api/v2/pokemon/${query}`)
+      .then(r => r.json())
+      .then(setPokemon);
+  }, [query]);
 
-  test("returns a pokemon based on the search result after fetching data", async () => {
-    const { result, waitForNextUpdate } = renderHook(() =>
-      usePokemon("charmander")
-    );
+  return { data: pokemon };
+}
 
-    await waitForNextUpdate();
+function Pokemon({ query }) {
+  const { data: pokemon } = usePokemon(query);
 
-    expect(result.current).toMatchObject({
-      data: {
-        id: 4,
-        name: "charmander",
-      },
-    });
-  });
-});
+  // 🚫 don't worry about the code below here, you shouldn't have to touch it
+  if (!pokemon) return <h3>Loading...</h3>;
+
+  return (
+    <div>
+      <h3>{pokemon.name}</h3>
+      <img
+        src={pokemon.sprites.front_default}
+        alt={pokemon.name + " front sprite"}
+      />
+    </div>
+  );
+}
+
+export default function App() {
+  const [query, setQuery] = useState("charmander");
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    setQuery(e.target.search.value);
+  }
+
+  return (
+    <Wrapper>
+      <h1>PokéSearcher</h1>
+      <Pokemon query={query} />
+      <form onSubmit={handleSubmit}>
+        <input type="text" name="search" defaultValue={query} />
+        <button type="submit">Search</button>
+      </form>
+    </Wrapper>
+  );
+}
+
+const Wrapper = styled.section`
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.15);
+  display: grid;
+  place-items: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  background: papayawhip;
+  text-align: center;
+
+  h1 {
+    background: #ef5350;
+    color: white;
+    display: block;
+    margin: 0;
+    padding: 1rem;
+    color: white;
+    font-size: 2rem;
+  }
+
+  form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    width: 100%;
+  }
+`;

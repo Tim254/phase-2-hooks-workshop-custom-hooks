@@ -1,50 +1,32 @@
-import { renderHook } from "@testing-library/react-hooks/pure";
-import { server } from "../data/mocks/server";
-import { usePokemon } from "../exercise/02";
-// import { usePokemon } from "../solution/02.extra-1";
+import styled from "styled-components";
+import React, { useEffect, useState } from "react";
 
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
-
-describe("Exercise 02 - Extra Credit 1", () => {
-  test("returns a pending state while waiting for the response", () => {
-    const { result } = renderHook(() => usePokemon("charmander"));
-    expect(result.current).toMatchObject({
-      data: null,
-      errors: null,
-      status: "pending",
-    });
+export function usePokemon(query) {
+  const [{ data, errors, status }, setState] = useState({
+    data: null,
+    errors: null,
+    status: "idle",
   });
 
-  test("returns a pokemon based on the search result after fetching data", async () => {
-    const { result, waitForNextUpdate } = renderHook(() =>
-      usePokemon("charmander")
-    );
+  useEffect(() => {
+    setState(state => ({ ...state, errors: null, status: "pending" }));
+    fetch(`https://pokeapi.co/api/v2/pokemon/${query}`)
+      .then(r => {
+        if (r.ok) {
+          return r.json();
+        } else {
+          return r.text().then(err => {
+            throw err;
+          });
+        }
+      })
+      .then(data => {
+        setState({ data, errors: null, status: "fulfilled" });
+      })
+      .catch(err => {
+        setState({ data: null, errors: [err], status: "rejected" });
+      });
+  }, [query]);
 
-    await waitForNextUpdate();
-
-    expect(result.current).toMatchObject({
-      data: {
-        id: 4,
-        name: "charmander",
-      },
-      status: "fulfilled",
-      errors: null,
-    });
-  });
-
-  test("returns an error state if the API responds with an error", async () => {
-    const { result, waitForNextUpdate } = renderHook(() =>
-      usePokemon("not_a_pokemon")
-    );
-
-    await waitForNextUpdate();
-
-    expect(result.current).toMatchObject({
-      data: null,
-      errors: ["Not found"],
-      status: "rejected",
-    });
-  });
-});
+  return { data, status, errors };
+}
